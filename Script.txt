@@ -1,0 +1,508 @@
+# Tumadam Delta Crash Proof UI
+
+-- Defensive environment initialization to prevent execution termination on mobile exploitslocal Players = game:GetService("Players")local ReplicatedStorage = game:GetService("ReplicatedStorage")local UserInputService = game:GetService("UserInputService")local TweenService = game:GetService("TweenService")local LocalPlayer = Players.LocalPlayer
+-- Safely await game loading state without freezing execution threadsif not game:IsLoaded() then 
+    pcall(function() game.Loaded:Wait() end)end
+-- Completely isolated remote retrieval wrapped in pcall to eliminate member indexing errorslocal MergeEvent, PickUpEvent, DropEvent, LockEvent, PurchaseUpgradeEvent
+pcall(function()
+    local packages = ReplicatedStorage:FindFirstChild("Packages", true)
+    if packages then
+        local remotes = packages:FindFirstChild("Remotes", true)
+        if remotes then
+
+            local networking = remotes:FindFirstChild("Networking", true)
+            if networking then
+                MergeEvent = networking:FindFirstChild("RE/Merge/MergeRequest")
+            end
+        end
+    end
+    
+    local nukeRemotes = ReplicatedStorage:FindFirstChild("NukeRemotes")
+    if nukeRemotes then
+        PickUpEvent = nukeRemotes:FindFirstChild("PickUp")
+        DropEvent = nukeRemotes:FindFirstChild("Drop")
+        LockEvent = nukeRemotes:FindFirstChild("RequestLockBase")
+        PurchaseUpgradeEvent = nukeRemotes:FindFirstChild("PurchaseUpgrade")
+    endend)
+-- Core Execution Toggle Stateslocal toggles = { 
+    Merge = false, 
+
+    RageMerge = false, 
+    Locked = false, 
+    up1 = false, 
+    up2 = false, 
+    up3 = false, 
+    StealthLaunch = false, 
+    AutoDrop = false,
+}
+-- Pcall-insulated cleaning loop to scrub previous interface instances safely
+pcall(function()
+    local CoreGui = game:GetService("CoreGui")
+    if CoreGui:FindFirstChild("TumadamDeltaGUI") then
+        CoreGui.TumadamDeltaGUI:Destroy()
+    endend)
+pcall(function()
+    if LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("TumadamDeltaGUI") then
+        LocalPlayer.PlayerGui.TumadamDeltaGUI:Destroy()
+
+    endend)
+-- Create top-level secure canvas containerlocal screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TumadamDeltaGUI"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Strict hierarchical fallback tree matching mobile exploit engine permissionslocal targetParent = nilif gethui then
+    pcall(function() targetParent = gethui() end)endif not targetParent then
+    pcall(function() targetParent = game:GetService("CoreGui") end)endif not targetParent then
+    targetParent = LocalPlayer:WaitForChild("PlayerGui", 10)end
+
+screenGui.Parent = targetParent
+-- Main Window Base Framelocal mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainWindow"
+mainFrame.Size = UDim2.new(0, 520, 0, 310)
+mainFrame.Position = UDim2.new(0.5, -260, 0.5, -155)
+mainFrame.BackgroundColor3 = Color3.fromRGB(13, 15, 19)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Parent = screenGui
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 8)
+mainCorner.Parent = mainFrame
+-- Dark premium window title/header layout barlocal topBar = Instance.new("Frame")
+topBar.Name = "TopHeaderBar"
+
+topBar.Size = UDim2.new(1, 0, 0, 36)
+topBar.BackgroundColor3 = Color3.fromRGB(9, 10, 13)
+topBar.BorderSizePixel = 0
+topBar.Parent = mainFrame
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 8)
+topCorner.Parent = topBar
+local topBarPatch = Instance.new("Frame")
+topBarPatch.Size = UDim2.new(1, 0, 0, 10)
+topBarPatch.Position = UDim2.new(0, 0, 1, -10)
+topBarPatch.BackgroundColor3 = Color3.fromRGB(9, 10, 13)
+topBarPatch.BorderSizePixel = 0
+topBarPatch.Parent = topBar
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(0, 300, 1, 0)
+titleText.Position = UDim2.new(0, 14, 0, 0)
+
+titleText.BackgroundTransparency = 1
+titleText.Text = "Tumadam <font color='#8A8F9D'>[Merge A Nuke]</font>"
+titleText.RichText = true
+titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleText.TextSize = 13
+titleText.Font = Enum.Font.SourceSansBold
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = topBar
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 36, 1, 0)
+closeButton.Position = UDim2.new(1, -44, 0, 0)
+closeButton.BackgroundTransparency = 1
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.fromRGB(138, 143, 157)
+closeButton.TextSize = 14
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.Parent = topBar
+
+
+closeButton.MouseButton1Click:Connect(function() screenGui:Destroy() end)
+-- Mobile touch-optimized dragging vector engine interfacelocal dragging, dragStart, startPos
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    endend)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    endend)
+
+
+-- Left-aligned sidebar navigation panel local sidebar = Instance.new("Frame")
+sidebar.Name = "NavigationSidebar"
+sidebar.Size = UDim2.new(0, 130, 1, -36)
+sidebar.Position = UDim2.new(0, 0, 0, 36)
+sidebar.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
+sidebar.BorderSizePixel = 0
+sidebar.Parent = mainFrame
+local sidebarPadding = Instance.new("UIPadding")
+sidebarPadding.PaddingTop = UDim.new(0, 8)
+sidebarPadding.PaddingLeft = UDim.new(0, 6)
+sidebarPadding.PaddingRight = UDim.new(0, 6)
+sidebarPadding.Parent = sidebar
+local sidebarLayout = Instance.new("UIListLayout")
+sidebarLayout.Padding = UDim.new(0, 4)
+sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+sidebarLayout.Parent = sidebar
+
+
+-- Bright Red right side frame accent (Faithfully matching your layout layout image configuration)local redAccent = Instance.new("Frame")
+redAccent.Name = "RedAccent"
+redAccent.Size = UDim2.new(0, 4, 1, 0)
+redAccent.Position = UDim2.new(1, -4, 0, 0)
+redAccent.BackgroundColor3 = Color3.fromRGB(255, 59, 48)
+redAccent.BorderSizePixel = 0
+redAccent.ZIndex = 5
+redAccent.Parent = mainFrame
+local accentCorner = Instance.new("UICorner")
+accentCorner.CornerRadius = UDim.new(0, 8)
+accentCorner.Parent = redAccent
+-- Features view container grid framelocal container = Instance.new("Frame")
+container.Name = "DisplayContainer"
+container.Size = UDim2.new(1, -134, 1, -36)
+container.Position = UDim2.new(0, 130, 0, 36)
+
+container.BackgroundTransparency = 1
+container.Parent = mainFrame
+local pages = {}local activePage = nil
+local function createPage(pageName)
+    local page = Instance.new("ScrollingFrame")
+    page.Name = pageName .. "View"
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.ScrollBarThickness = 2
+    page.ScrollBarImageColor3 = Color3.fromRGB(35, 40, 55)
+    page.Visible = false
+    page.Parent = container
+
+    local pagePadding = Instance.new("UIPadding")
+
+    pagePadding.PaddingTop = UDim.new(0, 12)
+    pagePadding.PaddingLeft = UDim.new(0, 12)
+    pagePadding.PaddingRight = UDim.new(0, 16)
+    pagePadding.Parent = page
+
+    local pageLayout = Instance.new("UIListLayout")
+    pageLayout.Padding = UDim.new(0, 6)
+    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pageLayout.Parent = page
+
+    pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        page.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 20)
+    end)
+
+    pages[pageName] = page
+    return pageend
+local farmingPage = createPage("Farming")
+
+local upgradesPage = createPage("Upgrades")local utilityPage = createPage("Utility")
+local function createSectionTitle(parent, text)
+    local containerFrame = Instance.new("Frame")
+    containerFrame.Size = UDim2.new(1, 0, 0, 20)
+    containerFrame.BackgroundTransparency = 1
+    containerFrame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 12
+    label.Font = Enum.Font.SourceSansBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = containerFrameend
+
+-- Premium smooth-styled sliding toggle rows mapping to feature execution valueslocal function createToggleRow(parent, name, desc, stateKey)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 42)
+    row.BackgroundColor3 = Color3.fromRGB(23, 26, 37)
+    row.BorderSizePixel = 0
+    row.Parent = parent
+
+    local rowCorner = Instance.new("UICorner")
+    rowCorner.CornerRadius = UDim.new(0, 6)
+    rowCorner.Parent = row
+
+    local infoFrame = Instance.new("Frame")
+    infoFrame.Size = UDim2.new(0, 230, 1, 0)
+    infoFrame.Position = UDim2.new(0, 12, 0, 0)
+    infoFrame.BackgroundTransparency = 1
+    infoFrame.Parent = row
+
+    local nameLabel = Instance.new("TextLabel")
+
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 0, 0, 3)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 12
+    nameLabel.Font = Enum.Font.SourceSansBold
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = infoFrame
+
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(1, 0, 0, 12)
+    descLabel.Position = UDim2.new(0, 0, 0, 21)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = desc
+    descLabel.TextColor3 = Color3.fromRGB(83, 87, 102)
+    descLabel.TextSize = 11
+    descLabel.Font = Enum.Font.SourceSans
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    descLabel.Parent = infoFrame
+
+    local switchTrack = Instance.new("TextButton")
+    switchTrack.Size = UDim2.new(0, 36, 0, 20)
+    switchTrack.Position = UDim2.new(1, -46, 0.5, -10)
+    switchTrack.BackgroundColor3 = Color3.fromRGB(34, 38, 55)
+    switchTrack.Text = ""
+    switchTrack.AutoButtonColor = false
+    switchTrack.Parent = row
+
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    trackCorner.Parent = switchTrack
+
+    local switchPin = Instance.new("Frame")
+    switchPin.Size = UDim2.new(0, 14, 0, 14)
+    switchPin.Position = UDim2.new(0, 3, 0.5, -7)
+    switchPin.BackgroundColor3 = Color3.fromRGB(138, 143, 157)
+    switchPin.BorderSizePixel = 0
+
+    switchPin.Parent = switchTrack
+
+    local pinCorner = Instance.new("UICorner")
+    pinCorner.CornerRadius = UDim.new(1, 0)
+    pinCorner.Parent = switchPin
+
+    local function updateVisualState(animate)
+        local targetPos = toggles[stateKey] and UDim2.new(0, 19, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+        local targetColor = toggles[stateKey] and Color3.fromRGB(45, 164, 78) or Color3.fromRGB(34, 38, 55)
+        local targetPinColor = toggles[stateKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(138, 143, 157)
+
+        if animate then
+            TweenService:Create(switchPin, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = targetPos, BackgroundColor3 = targetPinColor}):Play()
+            TweenService:Create(switchTrack, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = targetColor}):Play()
+        else
+            switchPin.Position = targetPos
+            switchPin.BackgroundColor3 = targetPinColor
+            switchTrack.BackgroundColor3 = targetColor
+        end
+
+    end
+
+    switchTrack.MouseButton1Click:Connect(function()
+        toggles[stateKey] = not toggles[stateKey]
+        updateVisualState(true)
+    end)
+
+    updateVisualState(false)
+    return switchTrackend
+-- Assemble navigation click elements local function setupTabButton(name)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.BackgroundTransparency = 1
+    btn.Text = "  " .. name
+    btn.TextColor3 = Color3.fromRGB(138, 143, 157)
+    btn.TextSize = 13
+
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = sidebar
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 5)
+    btnCorner.Parent = btn
+
+    local selectionMarker = Instance.new("Frame")
+    selectionMarker.Name = "SelectorBar"
+    selectionMarker.Size = UDim2.new(0, 3, 0.5, 0)
+    selectionMarker.Position = UDim2.new(0, 0, 0.25, 0)
+    selectionMarker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    selectionMarker.BorderSizePixel = 0
+    selectionMarker.Visible = false
+    selectionMarker.Parent = btn
+
+    local markerCorner = Instance.new("UICorner")
+    markerCorner.CornerRadius = UDim.new(0, 2)
+
+    markerCorner.Parent = selectionMarker
+
+    local function activate()
+        if activePage then
+            activePage.Visible = false
+        end
+        for _, sidebarBtn in ipairs(sidebar:GetChildren()) do
+            if sidebarBtn:IsA("TextButton") then
+                sidebarBtn.BackgroundTransparency = 1
+                sidebarBtn.TextColor3 = Color3.fromRGB(138, 143, 157)
+                if sidebarBtn:FindFirstChild("SelectorBar") then 
+                    sidebarBtn.SelectorBar.Visible = false 
+                end
+            end
+        end
+
+        btn.BackgroundColor3 = Color3.fromRGB(27, 30, 43)
+        btn.BackgroundTransparency = 0
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+        selectionMarker.Visible = true
+
+        activePage = pages[name]
+        if activePage then
+            activePage.Visible = true
+        end
+    end
+
+    btn.MouseButton1Click:Connect(activate)
+    if name == "Farming" then
+        activate()
+    endend
+
+setupTabButton("Farming")
+setupTabButton("Upgrades")
+setupTabButton("Utility")
+-- Populate configuration panels
+
+createSectionTitle(farmingPage, "Farming Automation Loops")
+createToggleRow(farmingPage, "Auto Merge", "Triggers sequence-based automated nuke pickup/drop matching configurations", "Merge")
+createToggleRow(farmingPage, "Rage Merge", "High frequency raw remote invocation deployment packet channel bypass", "RageMerge")
+createToggleRow(farmingPage, "Auto Drop", "Maintains drops mapping directly onto local character tracking coordinate systems", "AutoDrop")
+
+createSectionTitle(upgradesPage, "Purchase Base Automation Pipelines")
+createToggleRow(upgradesPage, "Tier Upgrade Routine", "Continuously triggers Remote Upgrade loops matching Tier models", "up1")
+createToggleRow(upgradesPage, "Spawn Upgrade Routine", "Continuously triggers Remote Upgrade loops matching Spawner elements", "up2")
+createToggleRow(upgradesPage, "Lock Upgrade Routine", "Continuously triggers Remote Upgrade loops matching Lock conditions", "up3")
+
+createSectionTitle(utilityPage, "Auxiliary Parameters")
+createToggleRow(utilityPage, "Auto Base Lock", "Instantly fires Base Security lock operations dynamically across runtime state shifts", "Locked")
+createToggleRow(utilityPage, "Stealth Launch Configuration", "Masks vector translation layers smoothly across local physics space", "StealthLaunch")
+-- Base world asset location lookup helperslocal function getMyBase()
+    local bases = workspace:FindFirstChild("Bases")
+    if not bases then return nil end
+    for _, base in pairs(bases:GetChildren()) do
+
+        if base:GetAttribute("OwnerUserId") == LocalPlayer.UserId then 
+            return base 
+        end
+    end
+    return nilend
+local function getMyNukes()
+    local base = getMyBase()
+    if not base then return {} end
+    local nukesFolder = base:FindFirstChild("Nukes")
+    if not nukesFolder then return {} end
+    return nukesFolder:GetChildren()end
+local function getNukesByTier()
+    local tiers = {}
+    local allNukes = {}
+    local workspaceNukes = workspace:FindFirstChild("Nukes")
+
+    
+    if workspaceNukes then 
+        for _, nuke in pairs(workspaceNukes:GetChildren()) do 
+            table.insert(allNukes, nuke) 
+        end 
+    end
+    for _, nuke in pairs(getMyNukes()) do 
+        table.insert(allNukes, nuke) 
+    end
+    
+    for _, nuke in pairs(allNukes) do
+        if nuke and nuke.Parent then
+            local tier = nuke:GetAttribute("Tier")
+            if tier then
+                tiers[tier] = tiers[tier] or {}
+                table.insert(tiers[tier], nuke)
+            end
+        end
+    end
+
+    return tiersend
+local function getHRP()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")end
+-- Thread loop background workers mapping features dynamically to GUI switches
+task.spawn(function()
+    while task.wait(0.5) do
+        if toggles.Merge and DropEvent and PickUpEvent then
+            pcall(function()
+                local tiers = getNukesByTier()
+                for tier, list in pairs(tiers) do
+                    if #list >= 2 then
+                        local nuke1 = list[1]
+                        local nuke2 = list[2]
+
+                        local hrp = getHRP()
+                        if not hrp then return end
+                        
+                        DropEvent:FireServer(hrp.CFrame)
+                        task.wait(0.2)
+                        hrp.CFrame = nuke1:GetPivot()
+                        task.wait(0.2)
+                        PickUpEvent:FireServer(nuke1)
+                        task.wait(0.2)
+                        
+                        local char = LocalPlayer.Character
+                        if char then
+                            local hum = char:FindFirstChild("Humanoid")
+                            if hum then hum:MoveTo(nuke2:GetPivot().Position) end
+                        end
+                        task.wait(0.8)
+                        if nuke2 and nuke2.Parent then
+                            hrp.CFrame = nuke2:GetPivot()
+                            task.wait(0.2)
+
+                            DropEvent:FireServer(hrp.CFrame)
+                        end
+                        break
+                    end
+                end
+            end)
+        end
+    endend)
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if toggles.RageMerge and MergeEvent then
+            pcall(function()
+                local myNukes = getMyNukes()
+                for _, nuke in ipairs(myNukes) do
+                    if nuke.Parent then
+                        MergeEvent:FireServer(nuke)
+                    end
+
+                end
+            end)
+        end
+    endend)
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if toggles.AutoDrop and DropEvent then
+            pcall(function()
+                local hrp = getHRP()
+                if hrp then
+                    DropEvent:FireServer(hrp.CFrame)
+                end
+            end)
+        end
+    endend)
+
+task.spawn(function()
+
+    while task.wait(1) do
+        pcall(function()
+            if PurchaseUpgradeEvent then
+                if toggles.up1 then PurchaseUpgradeEvent:FireServer("Tier") end
+                if toggles.up2 then PurchaseUpgradeEvent:FireServer("Spawn") end
+                if toggles.up3 then PurchaseUpgradeEvent:FireServer("Lock") end
+            end
+            if toggles.Locked and LockEvent then
+                LockEvent:FireServer()
+            end
+        end)
+    endend)
+
+
